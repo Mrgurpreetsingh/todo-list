@@ -13,8 +13,9 @@ function Login() {
       localStorage.setItem('token', response.data.token);
       alert('Login réussi!');
     } catch (error) {
-      alert('Erreur de connexion');
-    }
+        console.error(error); // Utilisation de la variable 'error'
+        alert('Erreur de connexion');
+      }
   };
 
   return (

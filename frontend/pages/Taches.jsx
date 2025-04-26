@@ -15,7 +15,7 @@ function Taches() {
         });
         setTaches(response.data);
       } catch (error) {
-        console.error('Erreur lors de la récupération des tâches');
+        console.error(error); // Utilisation de la variable 'error'
       }
     };
 
