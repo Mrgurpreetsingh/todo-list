@@ -1,0 +1,112 @@
+/* Taches.css */
+.taches-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #f4f4f4;
+    padding: 20px;
+  }
+  
+  .taches-container {
+    width: 600px;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    border: 1px solid #ccc;
+  }
+  
+  h1 {
+    color: #333;
+    font-size: 2rem;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  
+  .error-message {
+    color: #d9534f;
+    font-size: 0.9rem;
+    text-align: center;
+    margin-bottom: 10px;
+  }
+  
+  .taches-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
+  }
+  
+  .taches-input,
+  .taches-textarea {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 1rem;
+  }
+  
+  .taches-input:focus,
+  .taches-textarea:focus {
+    border-color: #007BFF;
+    outline: none;
+  }
+  
+  .taches-textarea {
+    resize: vertical;
+    min-height: 100px;
+  }
+  
+  .taches-button {
+    padding: 10px;
+    background-color: #007BFF;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  
+  .taches-button:hover {
+    background-color: #0056b3;
+  }
+  
+  .taches-button:focus {
+    outline: 2px solid #0056b3;
+    outline-offset: 2px;
+  }
+  
+  .taches-button-delete {
+    background-color: #d9534f;
+  }
+  
+  .taches-button-delete:hover {
+    background-color: #c9302c;
+  }
+  
+  .taches-list {
+    list-style: none;
+    padding: 0;
+  }
+  
+  .tache-item {
+    padding: 15px;
+    border-bottom: 1px solid #ccc;
+  }
+  
+  .tache-item:last-child {
+    border-bottom: none;
+  }
+  
+  .tache-item h3 {
+    color: #333;
+    font-size: 1.2rem;
+    margin: 0 0 5px;
+  }
+  
+  .tache-item p {
+    color: #555;
+    font-size: 1rem;
+    margin: 0 0 10px;
+  }

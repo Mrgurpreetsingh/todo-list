@@ -1,11 +1,13 @@
+// src/context/AuthProvider.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { AuthContext } from '@context/AuthContext';
+import { AuthContext } from './AuthContext.jsx';
 
-export const AuthProvider = ({ children }) => {
+export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token') || null);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -13,10 +15,12 @@ export const AuthProvider = ({ children }) => {
       axios
         .get('/auth/me', {
           headers: { Authorization: `Bearer ${token}` },
+          withCredentials: true,
         })
         .then((res) => setUser(res.data.user))
         .catch(() => {
           setToken(null);
+          setUser(null);
           localStorage.removeItem('token');
           navigate('/login');
         });
@@ -25,28 +29,29 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const res = await axios.post('/auth/login', {
-        email,
-        password,
-      });
+      const res = await axios.post(
+        '/auth/login',
+        { email, password },
+        { withCredentials: true }
+      );
       const { token, user } = res.data;
       setToken(token);
       setUser(user);
       localStorage.setItem('token', token);
+      setError(null);
       navigate('/taches');
-    } catch (error) {
-      console.error('Erreur de connexion', error);
-      throw new Error('Identifiants incorrects');
+    } catch (err) {
+      const errorMessage = err.response?.data?.error || 'Identifiants incorrects';
+      setError(errorMessage);
+      throw new Error(errorMessage);
     }
   };
 
   const register = async (username, email, password, nom, prenom) => {
     try {
-      // Récupérer le jeton CSRF
-      const csrfRes = await axios.get('/csrf-token');
+      const csrfRes = await axios.get('/csrf-token', { withCredentials: true });
       const csrfToken = csrfRes.data.csrfToken;
 
-      // Envoyer la requête d'inscription
       const res = await axios.post(
         '/auth/register',
         {
@@ -57,19 +62,21 @@ export const AuthProvider = ({ children }) => {
           prenom,
         },
         {
-          headers: {
-            'X-CSRF-Token': csrfToken,
-          },
+          headers: { 'X-CSRF-Token': csrfToken },
+          withCredentials: true,
         }
       );
       const { token, user } = res.data;
       setToken(token);
       setUser(user);
       localStorage.setItem('token', token);
+      setError(null);
       navigate('/taches');
-    } catch (error) {
-      console.error('Erreur d\'inscription:', error.response?.data || error.message);
-      throw new Error(error.response?.data?.error || 'Erreur lors de l\'inscription');
+    } catch (err) {
+      const errorMessage = err.response?.data?.error || 'Erreur lors de l\'inscription';
+      console.error('Erreur d\'inscription:', err.response?.data || err.message);
+      setError(errorMessage);
+      throw new Error(errorMessage);
     }
   };
 
@@ -77,12 +84,13 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
     setUser(null);
     localStorage.removeItem('token');
+    setError(null);
     navigate('/login');
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, login, register, logout, error }}>
       {children}
     </AuthContext.Provider>
   );
-};
+}

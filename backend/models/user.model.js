@@ -1,14 +1,15 @@
+// backend/models/user.model.js
 import pool from '../config/db.js';
 
 export const createUser = async (username, email, mot_de_passe, nom, prenom) => {
   try {
     console.log('Création utilisateur:', { username, email, mot_de_passe, nom, prenom });
-    const [result] = await pool.promise().query(
+    const [result] = await pool.query(
       `INSERT INTO users (username, email, mot_de_passe, nom, prenom, role) VALUES (?, ?, ?, ?, ?, ?)`,
       [username, email, mot_de_passe, nom, prenom, 'user']
     );
     console.log('Résultat de l\'insertion:', result);
-    return result;
+    return { id: result.insertId }; // Retourne l'ID de l'utilisateur créé
   } catch (err) {
     console.error('Erreur dans createUser:', err);
     throw new Error('Erreur lors de la création de l\'utilisateur');
@@ -18,7 +19,7 @@ export const createUser = async (username, email, mot_de_passe, nom, prenom) => 
 export const getUserByEmail = async (email) => {
   try {
     console.log('Recherche utilisateur avec email:', email);
-    const [rows] = await pool.promise().query(`SELECT * FROM users WHERE email = ?`, [email]);
+    const [rows] = await pool.query(`SELECT * FROM users WHERE email = ?`, [email]);
     console.log('Résultat de la requête:', rows);
     return rows[0];
   } catch (err) {
@@ -30,7 +31,7 @@ export const getUserByEmail = async (email) => {
 export const getUserById = async (id) => {
   try {
     console.log('Recherche utilisateur avec id:', id);
-    const [rows] = await pool.promise().query(`SELECT * FROM users WHERE id = ?`, [id]);
+    const [rows] = await pool.query(`SELECT * FROM users WHERE id = ?`, [id]);
     console.log('Résultat de la requête:', rows);
     return rows[0];
   } catch (err) {

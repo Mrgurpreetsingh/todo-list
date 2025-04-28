@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react';
-import { AuthContext } from '../context/AuthContext.jsx';
-import FormContainer from '../component/FormContainer'; // Importer le composant FormContainer
+import { AuthContext } from '@context/AuthContext.jsx';
+import FormContainer from '@component/FormContainer.jsx';// Importer le composant FormContainer
 import { Link } from 'react-router-dom';
 
 function Login() {

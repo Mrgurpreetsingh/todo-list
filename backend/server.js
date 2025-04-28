@@ -1,3 +1,4 @@
+// backend/server.js
 import express from 'express';
 import fs from 'fs';
 import https from 'https';
@@ -9,18 +10,19 @@ import taskRoutes from './routes/tache.routes.js';
 import cors from 'cors';
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // Vérification de l'existence des certificats SSL
-if (!fs.existsSync('C:/Users/PRFE12/OneDrive - ASSOFAC/Bureau/todo-list/certs/backend/backend-cert.pem') || 
-    !fs.existsSync('C:/Users/PRFE12/OneDrive - ASSOFAC/Bureau/todo-list/certs/backend/backend-key.pem')) {
+const certPath = '/usr/src/app/certs/backend';
+if (!fs.existsSync(`${certPath}/backend-cert.pem`) || 
+    !fs.existsSync(`${certPath}/backend-key.pem`)) {
   console.error('Certificats SSL manquants ou inaccessibles.');
-  process.exit(1); // Arrêt du serveur si les certificats sont introuvables
+  process.exit(1);
 }
 
-// Chargement des certificats générés pour le backend
-const privateKey = fs.readFileSync('C:/Users/PRFE12/OneDrive - ASSOFAC/Bureau/todo-list/certs/backend/backend-key.pem', 'utf8');
-const certificate = fs.readFileSync('C:/Users/PRFE12/OneDrive - ASSOFAC/Bureau/todo-list/certs/backend/backend-cert.pem', 'utf8');
+// Chargement des certificats
+const privateKey = fs.readFileSync(`${certPath}/backend-key.pem`, 'utf8');
+const certificate = fs.readFileSync(`${certPath}/backend-cert.pem`, 'utf8');
 
 const credentials = { key: privateKey, cert: certificate };
 
@@ -32,13 +34,13 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(
   session({
-    secret: 'votre_secret_session_ici',
+    secret: process.env.SESSION_SECRET || 'votre_secret_session_ici',
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: isProduction } // Ne mettre secure à true que si en production
+    cookie: { secure: isProduction },
   })
 );
-app.use(cors({ origin: 'https://localhost:5173', credentials: true }));
+app.use(cors({ origin: 'http://localhost', credentials: true }));
 
 // Middleware CSRF
 const csrfProtection = csrf({ cookie: { httpOnly: true, secure: isProduction } });
@@ -68,7 +70,7 @@ app.use((err, req, res, next) => {
   res.status(500).send('Une erreur est survenue.');
 });
 
-// Démarrage du serveur HTTPS avec les certificats
+// Démarrage du serveur HTTPS
 https.createServer(credentials, app).listen(PORT, () => {
   console.log(`✅ Serveur démarré sur https://localhost:${PORT}`);
 });

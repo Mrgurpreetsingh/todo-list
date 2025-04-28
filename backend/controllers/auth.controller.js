@@ -1,3 +1,4 @@
+// backend/controllers/auth.controller.js
 import { getUserByEmail, createUser, getUserById } from '../models/user.model.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -14,23 +15,22 @@ export const register = async (req, res) => {
 
     const hash = await bcrypt.hash(mot_de_passe, 10);
     const result = await createUser(username, email, hash, nom, prenom);
+    console.log('Utilisateur créé:', result);
 
-    const newUser = await getUserByEmail(email);
-    if (!newUser) {
-      return res.status(500).json({ error: 'Erreur lors de la récupération de l\'utilisateur nouvellement créé' });
-    }
+    const user = {
+      id: result.id,
+      username,
+      email,
+      nom,
+      prenom,
+      role: 'user',
+    };
 
-    const token = jwt.sign({ userId: newUser.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
     res.status(201).json({
       token,
-      user: {
-        id: newUser.id,
-        username: newUser.username,
-        email: newUser.email,
-        nom: newUser.nom,
-        prenom: newUser.prenom,
-      },
+      user,
     });
   } catch (err) {
     console.error('Erreur dans register:', err);

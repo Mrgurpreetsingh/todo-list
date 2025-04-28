@@ -1,6 +1,8 @@
+// Taches.jsx
 import React, { useState, useEffect, useContext, useCallback } from 'react';
 import axios from 'axios';
-import { AuthContext } from '../context/AuthContext.jsx';
+import { AuthContext } from '@context/AuthContext.jsx';
+import '../styles/Taches.css'; // Importer le nouveau CSS
 
 function Taches() {
   const { token } = useContext(AuthContext);
@@ -119,50 +121,58 @@ function Taches() {
   };
 
   return (
-    <div className="container">
-      <h1>Mes Tâches</h1>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      <form onSubmit={handleAjouterTache}>
-        <input
-          type="text"
-          placeholder="Titre"
-          value={titre}
-          onChange={(e) => setTitre(e.target.value)}
-          required
-        />
-        <textarea
-          placeholder="Description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-        <button type="submit">Ajouter</button>
-      </form>
-      <ul>
-        {taches.map((tache) => (
-          <li key={tache.id_tache}>
-            <h3
-              style={{
-                textDecoration: tache.est_complete ? 'line-through' : 'none',
-              }}
-            >
-              {tache.titre}
-            </h3>
-            <p>{tache.description}</p>
-            <button
-              onClick={() =>
-                handleToggleComplete(tache.id_tache, tache.est_complete)
-              }
-            >
-              {tache.est_complete
-                ? 'Marquer comme incomplète'
-                : 'Marquer comme complète'}
-            </button>
-            <button onClick={() => handleSupprimerTache(tache.id_tache)}>
-              Supprimer
-            </button>
-          </li>
-        ))}
-      </ul>
+    <div className="taches-wrapper">
+      <div className="taches-container">
+        <h1>Mes Tâches</h1>
+        {error && <p className="error-message">{error}</p>}
+        <form onSubmit={handleAjouterTache} className="taches-form">
+          <input
+            type="text"
+            placeholder="Titre"
+            value={titre}
+            onChange={(e) => setTitre(e.target.value)}
+            required
+            className="taches-input"
+          />
+          <textarea
+            placeholder="Description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className="taches-textarea"
+          />
+          <button type="submit" className="taches-button">Ajouter</button>
+        </form>
+        <ul className="taches-list">
+          {taches.map((tache) => (
+            <li key={tache.id_tache} className="tache-item">
+              <h3
+                style={{
+                  textDecoration: tache.est_complete ? 'line-through' : 'none',
+                }}
+              >
+                {tache.titre}
+              </h3>
+              <p>{tache.description}</p>
+              <button
+                onClick={() =>
+                  handleToggleComplete(tache.id_tache, tache.est_complete)
+                }
+                className="taches-button"
+              >
+                {tache.est_complete
+                  ? 'Marquer comme incomplète'
+                  : 'Marquer comme complète'}
+              </button>
+              <button
+                onClick={() => handleSupprimerTache(tache.id_tache)}
+                className="taches-button taches-button-delete"
+              >
+                Supprimer
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }

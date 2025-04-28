@@ -1,7 +1,8 @@
+// src/pages/Register.jsx
 import React, { useState, useContext } from 'react';
-import { AuthContext } from '../context/AuthContext.jsx';
-import FormContainer from '../component/FormContainer.jsx'; // Importer le composant FormContainer
-import { Link } from 'react-router-dom';
+import { AuthContext } from '@context/AuthContext.jsx';
+import FormContainer from '@component/FormContainer.jsx'; // Vérifier l'existence du fichier
+import { Link, useNavigate } from 'react-router-dom';
 
 function Register() {
   const [username, setUsername] = useState('');
@@ -9,15 +10,16 @@ function Register() {
   const [password, setPassword] = useState('');
   const [nom, setNom] = useState('');
   const [prenom, setPrenom] = useState('');
-  const [error, setError] = useState(null);
-  const { register } = useContext(AuthContext);
+  const { register, error } = useContext(AuthContext);
+  const navigate = useNavigate();
 
   const handleRegister = async (e) => {
     e.preventDefault();
     try {
       await register(username, email, password, nom, prenom);
-    } catch (error) {
-      setError(error.message);
+      navigate('/taches');
+    } catch {
+      // L'erreur est gérée par AuthContext
     }
   };
 
@@ -71,7 +73,6 @@ function Register() {
         onChange={(e) => setPrenom(e.target.value)}
         required
       />
-      <button type="submit">S'inscrire</button>
       <p>
         Déjà un compte ? <Link to="/login">Se connecter</Link>
       </p>
