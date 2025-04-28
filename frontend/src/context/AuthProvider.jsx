@@ -27,7 +27,8 @@ export function AuthProvider({ children }) {
           withCredentials: true,
         });
         setUser(res.data.user);
-      } catch {
+      } catch (err) {
+        console.error('Erreur checkAuth:', err);
         setToken(null);
         setUser(null);
         localStorage.removeItem('token');
@@ -38,15 +39,20 @@ export function AuthProvider({ children }) {
   }, [token, navigate]);
 
   const login = async (email, password) => {
+    console.log('Login called with:', { email, password });
+    if (!email || !password) {
+      throw new Error('Email et mot de passe sont requis');
+    }
     try {
       const csrfRes = await axios.get('/csrf-token', {
         withCredentials: true,
       });
+      console.log('CSRF token:', csrfRes.data.csrfToken);
       const csrfToken = csrfRes.data.csrfToken;
 
       const res = await axios.post(
         '/auth/login',
-        { email, password },
+        { email, password }, // Vérifiez les clés
         {
           headers: { 
             'Content-Type': 'application/json',
@@ -55,6 +61,7 @@ export function AuthProvider({ children }) {
           withCredentials: true,
         }
       );
+      console.log('Login response:', res.data);
       const { token, user } = res.data;
       setToken(token);
       setUser(user);
@@ -62,6 +69,7 @@ export function AuthProvider({ children }) {
       setError(null);
       navigate('/taches');
     } catch (err) {
+      console.error('Erreur login:', err.response?.data || err.message);
       const errorMessage = err.response?.data?.error || 'Identifiants incorrects';
       setError(errorMessage);
       throw new Error(errorMessage);

@@ -11,13 +11,14 @@ function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('Submitting login with:', { email, password }); // Log des arguments
     try {
       await login(email, password);
       setError(null);
     } catch (err) {
       const errorMessage = err.message || 'Identifiants incorrects';
       setError(errorMessage);
-      console.error(err);
+      console.error('Erreur login:', err);
     }
   };
 

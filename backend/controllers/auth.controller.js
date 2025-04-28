@@ -1,64 +1,67 @@
 // backend/controllers/auth.controller.js
-import { getUserByEmail, createUser, getUserById } from '../models/user.model.js';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import pool from '../config/db.js';
 
-export const register = async (req, res) => {
-  const { username, email, mot_de_passe, nom, prenom } = req.body;
-
+export const register = async (req, res, next) => {
   try {
+    const { username, email, mot_de_passe, nom, prenom } = req.body;
     console.log('Tentative d\'inscription:', { username, email, nom, prenom });
-    const existingUser = await getUserByEmail(email);
-    if (existingUser) {
-      console.log('Email déjà utilisé:', email);
-      return res.status(400).json({ message: 'L\'email est déjà utilisé' });
+
+    const [existingUsers] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
+    console.log('Recherche utilisateur avec email:', email, 'Résultat:', existingUsers);
+    if (existingUsers.length > 0) {
+      return res.status(400).json({ error: 'Cet email est déjà utilisé' });
     }
 
-    const hash = await bcrypt.hash(mot_de_passe, 10);
-    const result = await createUser(username, email, hash, nom, prenom);
-    console.log('Utilisateur créé:', result);
+    const hashedPassword = await bcrypt.hash(mot_de_passe, 10);
+    const [result] = await pool.query(
+      'INSERT INTO users (username, email, mot_de_passe, nom, prenom, role) VALUES (?, ?, ?, ?, ?, ?)',
+      [username, email, hashedPassword, nom, prenom, 'user']
+    );
+    console.log('Utilisateur créé:', { id: result.insertId });
 
-    const user = {
-      id: result.id,
-      username,
-      email,
-      nom,
-      prenom,
-      role: 'user',
-    };
-
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const token = jwt.sign({ userId: result.insertId }, process.env.JWT_SECRET || 'votre_secret_jwt', {
+      expiresIn: '1h',
+    });
 
     res.status(201).json({
       token,
-      user,
+      user: { id: result.insertId, username, email, nom, prenom, role: 'user' },
     });
   } catch (err) {
-    console.error('Erreur dans register:', err.message);
-    res.status(500).json({ error: err.message });
+    console.error('Erreur register:', err);
+    next(err);
   }
 };
 
-export const login = async (req, res) => {
-  const { email, mot_de_passe } = req.body;
-
+export const login = async (req, res, next) => {
   try {
-    console.log('Tentative de connexion:', { email });
-    const user = await getUserByEmail(email);
+    const { email, password } = req.body;
+    console.log('Tentative de connexion:', { email, password }); // Log complet
+    if (!email || !password) {
+      console.log('Données manquantes:', { email, password });
+      return res.status(400).json({ error: 'Email et mot de passe sont requis' });
+    }
+
+    const [users] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
+    console.log('Recherche utilisateur avec email:', email, 'Résultat:', users);
+    const user = users[0];
     if (!user) {
-      console.log('Utilisateur non trouvé:', email);
-      return res.status(404).json({ message: 'Utilisateur non trouvé' });
+      return res.status(401).json({ error: 'Utilisateur non trouvé' });
     }
 
-    const isMatch = await bcrypt.compare(mot_de_passe, user.mot_de_passe);
+    const isMatch = await bcrypt.compare(password, user.mot_de_passe);
+    console.log('Comparaison mot de passe:', { isMatch });
     if (!isMatch) {
-      console.log('Mot de passe incorrect pour:', email);
-      return res.status(400).json({ message: 'Mot de passe incorrect' });
+      return res.status(401).json({ error: 'Mot de passe incorrect' });
     }
 
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'votre_secret_jwt', {
+      expiresIn: '1h',
+    });
 
-    res.status(200).json({
+    res.json({
       token,
       user: {
         id: user.id,
@@ -66,44 +69,45 @@ export const login = async (req, res) => {
         email: user.email,
         nom: user.nom,
         prenom: user.prenom,
+        role: user.role,
       },
     });
   } catch (err) {
-    console.error('Erreur dans login:', err.message);
-    res.status(500).json({ error: err.message });
+    console.error('Erreur login:', err);
+    next(err);
   }
 };
 
-export const getMe = async (req, res) => {
+export const getMe = async (req, res, next) => {
   try {
-    console.log('Requête /auth/me reçue:', req.headers.authorization);
     const token = req.headers.authorization?.split(' ')[1];
+    console.log('Requête /auth/me reçue:', token);
     if (!token) {
-      console.log('Token manquant');
-      return res.status(401).json({ message: 'Aucun token fourni' });
+      return res.status(401).json({ error: 'Token manquant' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'votre_secret_jwt');
     console.log('Token décodé:', decoded);
-    const user = await getUserById(decoded.userId);
-    console.log('Résultat getUserById:', user);
 
+    const [users] = await pool.query('SELECT * FROM users WHERE id = ?', [decoded.userId]);
+    console.log('Recherche utilisateur avec id:', decoded.userId, 'Résultat:', users);
+    const user = users[0];
     if (!user) {
-      console.log('Utilisateur non trouvé:', decoded.userId);
-      return res.status(404).json({ message: 'Utilisateur non trouvé' });
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
     }
 
-    res.status(200).json({
+    res.json({
       user: {
         id: user.id,
         username: user.username,
         email: user.email,
         nom: user.nom,
         prenom: user.prenom,
+        role: user.role,
       },
     });
   } catch (err) {
-    console.error('Erreur dans getMe:', err.message);
-    res.status(500).json({ error: 'Erreur lors de la récupération de l\'utilisateur' });
+    console.error('Erreur getMe:', err);
+    next(err);
   }
 };
