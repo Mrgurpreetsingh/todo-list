@@ -1,0 +1,83 @@
+/* FormContainer.css */
+.form-wrapper {
+    display: flex;
+    justify-content: center; /* Centre horizontalement */
+    align-items: center; /* Centre verticalement */
+    min-height: 100vh; /* Assure que le wrapper prend toute la hauteur de la fenêtre */
+    background-color: #f4f4f4; /* Fond léger pour contraster */
+}
+
+.form-container {
+    width: 600px;  /* Largeur fixe de 600px */
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    border: 1px solid #ccc;
+    margin-left: 500px;
+    height: auto;  /* Hauteur ajustée automatiquement en fonction du contenu */
+}
+
+h2 {
+    text-align: center;
+    color: #333;
+    font-size: 1.8rem;
+}
+
+.error-message {
+    color: red;
+    font-size: 0.9rem;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.form input {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 1rem;
+}
+
+.form input:focus {
+    border-color: #007BFF;
+    outline: none;
+}
+
+.form-button {
+    padding: 10px;
+    background-color: #007BFF;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.form-button:hover {
+    background-color: #0056b3;
+}
+
+.form-button:focus {
+    outline: 2px solid #0056b3;
+    outline-offset: 2px;
+}
+
+.form input[aria-invalid='true'] {
+    border-color: #d9534f;
+    background-color: #f9d6d5;
+}
+
+label {
+    font-size: 1rem;
+    color: #555;
+}
+
+input::placeholder {
+    color: #888;
+}

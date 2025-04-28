@@ -1,29 +1,31 @@
-# Étape 1 : Construction de l'application
+# Étape de construction : construction d'une image intermédiaire
 FROM node:20-slim AS builder
 
-# Définir le dossier de travail
+# Répertoire de travail
 WORKDIR /usr/src/app
 
-# Copier les fichiers de dépendances
+# Copier les fichiers package*.json pour installer les dépendances
 COPY package*.json ./
 
-# Installer les dépendances en production uniquement
-RUN npm install --production
+# Installer les dépendances de production
+RUN apt-get update && apt-get install -y python3 make g++ && \
+    apt-get upgrade -y && \
+    npm ci --omit=dev
 
-# Copier tout le reste de l'application
+# Copier le code source de l'application
 COPY . .
 
-# Étape 2 : Image finale pour exécuter l'application
+# Étape finale : image de production
 FROM node:20-slim
 
-# Définir le dossier de travail
+# Définir le répertoire de travail
 WORKDIR /usr/src/app
 
-# Copier uniquement le build final depuis l'étape builder
+# Copier les fichiers nécessaires depuis l'étape de construction
 COPY --from=builder /usr/src/app .
 
 # Exposer le port de l'application
 EXPOSE 3000
 
-# Lancer ton application
-CMD ["npm", "start"]
+# Lancer l'application
+CMD ["node", "server.js"]

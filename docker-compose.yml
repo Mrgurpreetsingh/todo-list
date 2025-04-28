@@ -1,4 +1,4 @@
-version: '3'
+version: '3.8'
 services:
   db:
     image: mysql:8
@@ -7,8 +7,13 @@ services:
       MYSQL_DATABASE: todo_users
     ports:
       - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+
   backend:
-    build: .
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
     depends_on:
@@ -18,3 +23,28 @@ services:
       - DB_USER=root
       - DB_PASSWORD=rootpassword
       - DB_NAME=todo_users
+      - JWT_SECRET=votre_secret_jwt_ici
+    volumes:
+      - ./backend:/usr/src/app
+      - ./certs/backend:/usr/src/app/certs/backend
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    environment:
+      - VITE_API_URL=http://backend:3000
+    volumes:
+      - ./frontend:/app
+      - ./certs/frontend:/app/certs/frontend
+
+networks:
+  default:
+    name: todo-network
+
+volumes:
+  db_data:

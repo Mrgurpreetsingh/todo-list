@@ -1,17 +1,18 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Home from '../pages/Home';
-import Taches from '../pages/Taches';
-import Login from '../pages/Login';
+import Home from '/src/pages/Home.jsx';
+import Taches from '/src/pages/Taches.jsx';
+import Login from '../pages/login.jsx';
+import Register from '/src/pages/register.jsx';
 
 function App() {
   return (
-    <Router>
+
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/taches" element={<Taches />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
       </Routes>
-    </Router>
   );
 }
 
