@@ -4,8 +4,8 @@ export const createUser = async (username, email, mot_de_passe, nom, prenom) => 
   try {
     console.log('Création utilisateur:', { username, email, mot_de_passe, nom, prenom });
     const [result] = await pool.promise().query(
-      `INSERT INTO users (username, email, mot_de_passe, nom, prenom) VALUES (?, ?, ?, ?, ?)`,
-      [username, email, mot_de_passe, nom, prenom]
+      `INSERT INTO users (username, email, mot_de_passe, nom, prenom, role) VALUES (?, ?, ?, ?, ?, ?)`,
+      [username, email, mot_de_passe, nom, prenom, 'user']
     );
     console.log('Résultat de l\'insertion:', result);
     return result;

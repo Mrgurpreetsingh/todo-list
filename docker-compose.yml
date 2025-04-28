@@ -1,14 +1,18 @@
 version: '3.8'
+
 services:
   db:
-    image: mysql:8
+    image: mysql:8.0
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: todo_users
+      - MYSQL_ROOT_PASSWORD=rootpassword
+      - MYSQL_DATABASE=todo_users
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - db_data:/var/lib/mysql
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - todo-network
 
   backend:
     build:
@@ -24,16 +28,20 @@ services:
       - DB_PASSWORD=rootpassword
       - DB_NAME=todo_users
       - JWT_SECRET=votre_secret_jwt_ici
+      - SESSION_SECRET=votre_secret_session_ici
+      - PORT=3000
     volumes:
       - ./backend:/usr/src/app
       - ./certs/backend:/usr/src/app/certs/backend
+    networks:
+      - todo-network
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "5173:5173"
+      - "80:80"
     depends_on:
       - backend
     environment:
@@ -41,10 +49,12 @@ services:
     volumes:
       - ./frontend:/app
       - ./certs/frontend:/app/certs/frontend
+    networks:
+      - todo-network
 
 networks:
-  default:
-    name: todo-network
+  todo-network:
+    driver: bridge
 
 volumes:
   db_data:
