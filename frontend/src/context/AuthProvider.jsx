@@ -1,4 +1,4 @@
-// src/context/AuthProvider.jsx
+// frontend/src/context/AuthProvider.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
@@ -11,28 +11,49 @@ export function AuthProvider({ children }) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (token) {
-      axios
-        .get('/auth/me', {
-          headers: { Authorization: `Bearer ${token}` },
+    const checkAuth = async () => {
+      if (!token) return;
+      try {
+        const csrfRes = await axios.get('/csrf-token', {
           withCredentials: true,
-        })
-        .then((res) => setUser(res.data.user))
-        .catch(() => {
-          setToken(null);
-          setUser(null);
-          localStorage.removeItem('token');
-          navigate('/login');
         });
-    }
+        const csrfToken = csrfRes.data.csrfToken;
+
+        const res = await axios.get('/auth/me', {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'X-CSRF-Token': csrfToken,
+          },
+          withCredentials: true,
+        });
+        setUser(res.data.user);
+      } catch {
+        setToken(null);
+        setUser(null);
+        localStorage.removeItem('token');
+        navigate('/login');
+      }
+    };
+    checkAuth();
   }, [token, navigate]);
 
   const login = async (email, password) => {
     try {
+      const csrfRes = await axios.get('/csrf-token', {
+        withCredentials: true,
+      });
+      const csrfToken = csrfRes.data.csrfToken;
+
       const res = await axios.post(
         '/auth/login',
         { email, password },
-        { withCredentials: true }
+        {
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken,
+          },
+          withCredentials: true,
+        }
       );
       const { token, user } = res.data;
       setToken(token);
@@ -49,20 +70,19 @@ export function AuthProvider({ children }) {
 
   const register = async (username, email, password, nom, prenom) => {
     try {
-      const csrfRes = await axios.get('/csrf-token', { withCredentials: true });
+      const csrfRes = await axios.get('/csrf-token', {
+        withCredentials: true,
+      });
       const csrfToken = csrfRes.data.csrfToken;
 
       const res = await axios.post(
         '/auth/register',
+        { username, email, mot_de_passe: password, nom, prenom },
         {
-          username,
-          email,
-          mot_de_passe: password,
-          nom,
-          prenom,
-        },
-        {
-          headers: { 'X-CSRF-Token': csrfToken },
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken,
+          },
           withCredentials: true,
         }
       );

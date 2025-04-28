@@ -1,48 +1,47 @@
-import React, { useState, useContext } from 'react';
-import { AuthContext } from '@context/AuthContext.jsx';
-import FormContainer from '@component/FormContainer.jsx';// Importer le composant FormContainer
-import { Link } from 'react-router-dom';
+// frontend/src/pages/login.jsx
+import { useState, useContext } from 'react';
+import { AuthContext } from '@context/AuthContext';
+import FormContainer from '@component/FormContainer.jsx';
 
 function Login() {
+  const { login } = useContext(AuthContext);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
-  const { login } = useContext(AuthContext);
 
-  const handleLogin = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       await login(email, password);
-    } catch (error) {
-      setError(error.message);
+      setError(null);
+    } catch (err) {
+      const errorMessage = err.message || 'Identifiants incorrects';
+      setError(errorMessage);
+      console.error(err);
     }
   };
 
   return (
-    <FormContainer title="Connexion" errorMessage={error} onSubmit={handleLogin}>
-      <label htmlFor="email">Email</label>
-      <input
-        id="email"
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        required
-        aria-invalid={error ? 'true' : 'false'}
-      />
-      <label htmlFor="password">Mot de passe</label>
-      <input
-        id="password"
-        type="password"
-        placeholder="Mot de passe"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        required
-        aria-invalid={error ? 'true' : 'false'}
-      />
-      <p>
-        Pas encore de compte ? <Link to="/register">S'inscrire</Link>
-      </p>
+    <FormContainer title="Connexion" errorMessage={error}>
+      <form onSubmit={handleSubmit} className="form">
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Email"
+          required
+          autoComplete="email"
+        />
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Mot de passe"
+          required
+          autoComplete="current-password"
+        />
+        <button type="submit" className="form-button">Se connecter</button>
+      </form>
     </FormContainer>
   );
 }

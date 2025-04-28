@@ -10,6 +10,7 @@ export const register = async (req, res) => {
     console.log('Tentative d\'inscription:', { username, email, nom, prenom });
     const existingUser = await getUserByEmail(email);
     if (existingUser) {
+      console.log('Email déjà utilisé:', email);
       return res.status(400).json({ message: 'L\'email est déjà utilisé' });
     }
 
@@ -33,7 +34,7 @@ export const register = async (req, res) => {
       user,
     });
   } catch (err) {
-    console.error('Erreur dans register:', err);
+    console.error('Erreur dans register:', err.message);
     res.status(500).json({ error: err.message });
   }
 };
@@ -45,11 +46,13 @@ export const login = async (req, res) => {
     console.log('Tentative de connexion:', { email });
     const user = await getUserByEmail(email);
     if (!user) {
+      console.log('Utilisateur non trouvé:', email);
       return res.status(404).json({ message: 'Utilisateur non trouvé' });
     }
 
     const isMatch = await bcrypt.compare(mot_de_passe, user.mot_de_passe);
     if (!isMatch) {
+      console.log('Mot de passe incorrect pour:', email);
       return res.status(400).json({ message: 'Mot de passe incorrect' });
     }
 
@@ -66,22 +69,27 @@ export const login = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('Erreur dans login:', err);
+    console.error('Erreur dans login:', err.message);
     res.status(500).json({ error: err.message });
   }
 };
 
 export const getMe = async (req, res) => {
   try {
+    console.log('Requête /auth/me reçue:', req.headers.authorization);
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
+      console.log('Token manquant');
       return res.status(401).json({ message: 'Aucun token fourni' });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('Token décodé:', decoded);
     const user = await getUserById(decoded.userId);
+    console.log('Résultat getUserById:', user);
 
     if (!user) {
+      console.log('Utilisateur non trouvé:', decoded.userId);
       return res.status(404).json({ message: 'Utilisateur non trouvé' });
     }
 
@@ -95,7 +103,7 @@ export const getMe = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('Erreur dans getMe:', err);
+    console.error('Erreur dans getMe:', err.message);
     res.status(500).json({ error: 'Erreur lors de la récupération de l\'utilisateur' });
   }
 };

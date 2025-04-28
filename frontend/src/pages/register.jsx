@@ -1,8 +1,8 @@
-// src/pages/Register.jsx
-import React, { useState, useContext } from 'react';
-import { AuthContext } from '@context/AuthContext.jsx';
-import FormContainer from '@component/FormContainer.jsx'; // Vérifier l'existence du fichier
-import { Link, useNavigate } from 'react-router-dom';
+// frontend/src/pages/register.jsx
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import FormContainer from '@component/FormContainer.jsx';
 
 function Register() {
   const [username, setUsername] = useState('');
@@ -10,72 +10,92 @@ function Register() {
   const [password, setPassword] = useState('');
   const [nom, setNom] = useState('');
   const [prenom, setPrenom] = useState('');
-  const { register, error } = useContext(AuthContext);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  const handleRegister = async (e) => {
-    e.preventDefault();
+  const fetchCsrfToken = async () => {
     try {
-      await register(username, email, password, nom, prenom);
-      navigate('/taches');
-    } catch {
-      // L'erreur est gérée par AuthContext
+      const response = await axios.get('/csrf-token', { withCredentials: true });
+      return response.data.csrfToken;
+    } catch (error) {
+      console.error('Erreur CSRF:', error);
+      throw error;
     }
   };
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const csrfToken = await fetchCsrfToken();
+      const response = await axios.post(
+        '/auth/register',
+        { username, email, mot_de_passe: password, nom, prenom },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken,
+          },
+          withCredentials: true,
+        }
+      );
+      localStorage.setItem('token', response.data.token);
+      navigate('/taches');
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || 'Erreur d\'inscription';
+      setError(errorMessage);
+      console.error('Erreur d\'inscription:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchCsrfToken();
+  }, []);
+
   return (
-    <FormContainer title="Inscription" errorMessage={error} onSubmit={handleRegister}>
-      <label htmlFor="username">Nom d'utilisateur</label>
-      <input
-        id="username"
-        type="text"
-        placeholder="Nom d'utilisateur"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-        required
-        aria-invalid={error ? 'true' : 'false'}
-      />
-      <label htmlFor="email">Email</label>
-      <input
-        id="email"
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        required
-        aria-invalid={error ? 'true' : 'false'}
-      />
-      <label htmlFor="password">Mot de passe</label>
-      <input
-        id="password"
-        type="password"
-        placeholder="Mot de passe"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        required
-        aria-invalid={error ? 'true' : 'false'}
-      />
-      <label htmlFor="nom">Nom</label>
-      <input
-        id="nom"
-        type="text"
-        placeholder="Nom"
-        value={nom}
-        onChange={(e) => setNom(e.target.value)}
-        required
-      />
-      <label htmlFor="prenom">Prénom</label>
-      <input
-        id="prenom"
-        type="text"
-        placeholder="Prénom"
-        value={prenom}
-        onChange={(e) => setPrenom(e.target.value)}
-        required
-      />
-      <p>
-        Déjà un compte ? <Link to="/login">Se connecter</Link>
-      </p>
+    <FormContainer title="Inscription" errorMessage={error}>
+      <form onSubmit={handleSubmit} className="form">
+        <input
+          type="text"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          placeholder="Nom d'utilisateur"
+          required
+          autoComplete="username"
+        />
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Email"
+          required
+          autoComplete="email"
+        />
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Mot de passe"
+          required
+          autoComplete="new-password"
+        />
+        <input
+          type="text"
+          value={nom}
+          onChange={(e) => setNom(e.target.value)}
+          placeholder="Nom"
+          required
+          autoComplete="family-name"
+        />
+        <input
+          type="text"
+          value={prenom}
+          onChange={(e) => setPrenom(e.target.value)}
+          placeholder="Prénom"
+          required
+          autoComplete="given-name"
+        />
+        <button type="submit" className="form-button">S'inscrire</button>
+      </form>
     </FormContainer>
   );
 }
