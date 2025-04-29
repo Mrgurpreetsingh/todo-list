@@ -7,7 +7,13 @@ COPY . .
 RUN npm run build
 
 FROM nginx:alpine
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=builder /app/dist /usr/share/nginx/html
-EXPOSE 80
+
+COPY ./dist /usr/share/nginx/html
+
+COPY ./nginx.conf /etc/nginx/conf.d/default.conf
+
+COPY ./certs/frontend /etc/nginx/certs
+
+EXPOSE 80 443
+
 CMD ["nginx", "-g", "daemon off;"]

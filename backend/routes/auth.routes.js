@@ -1,15 +1,12 @@
+// backend/routes/auth.routes.js
 import express from 'express';
 import { register, login, getMe } from '../controllers/auth.controller.js';
+import { verifyToken } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
-// Route pour l'inscription
 router.post('/register', register);
-
-// Route pour la connexion
 router.post('/login', login);
-
-// Route pour récupérer l'utilisateur
-router.get('/me', getMe);
+router.get('/me', verifyToken, getMe);
 
 export default router;

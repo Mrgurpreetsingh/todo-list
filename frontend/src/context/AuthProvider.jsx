@@ -1,5 +1,5 @@
 // frontend/src/context/AuthProvider.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from './AuthContext.jsx';
@@ -10,62 +10,62 @@ export function AuthProvider({ children }) {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
+  // Instance axios stable
+  const axiosInstance = useMemo(() => {
+    return axios.create({
+      baseURL: import.meta.env.VITE_API_URL || 'https://localhost:3001',
+    });
+  }, []);
+
+  // Fonction pour récupérer le CSRF token
+  const fetchCsrfToken = async () => {
+    const res = await axiosInstance.get('/csrf-token', { withCredentials: true });
+    return res.data.csrfToken;
+  };
+
   useEffect(() => {
     const checkAuth = async () => {
       if (!token) return;
       try {
-        const csrfRes = await axios.get('/csrf-token', {
-          withCredentials: true,
-        });
-        const csrfToken = csrfRes.data.csrfToken;
-
-        const res = await axios.get('/auth/me', {
-          headers: { 
+        const csrfToken = await fetchCsrfToken();
+        const res = await axiosInstance.get('/auth/me', {
+          headers: {
             Authorization: `Bearer ${token}`,
             'X-CSRF-Token': csrfToken,
           },
           withCredentials: true,
         });
-        setUser(res.data.user);
+        setUser(res.data);
       } catch (err) {
-        console.error('Erreur checkAuth:', err);
-        setToken(null);
-        setUser(null);
-        localStorage.removeItem('token');
-        navigate('/login');
+        console.error('Erreur checkAuth:', err.response?.data || err.message);
+        handleLogout();
       }
     };
     checkAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, navigate]);
 
-  const login = async (email, password) => {
-    console.log('Login called with:', { email, password });
-    if (!email || !password) {
-      throw new Error('Email et mot de passe sont requis');
+  const login = async (email, password, recaptchaToken) => {
+    if (!email || !password || !recaptchaToken) {
+      throw new Error('Email, mot de passe et reCAPTCHA sont requis.');
     }
     try {
-      const csrfRes = await axios.get('/csrf-token', {
-        withCredentials: true,
-      });
-      console.log('CSRF token:', csrfRes.data.csrfToken);
-      const csrfToken = csrfRes.data.csrfToken;
-
-      const res = await axios.post(
+      const csrfToken = await fetchCsrfToken();
+      const res = await axiosInstance.post(
         '/auth/login',
-        { email, password }, // Vérifiez les clés
+        { email, password, recaptchaToken },
         {
-          headers: { 
+          headers: {
             'Content-Type': 'application/json',
             'X-CSRF-Token': csrfToken,
           },
           withCredentials: true,
         }
       );
-      console.log('Login response:', res.data);
-      const { token, user } = res.data;
-      setToken(token);
+      const { token: newToken, user } = res.data;
+      setToken(newToken);
       setUser(user);
-      localStorage.setItem('token', token);
+      localStorage.setItem('token', newToken);
       setError(null);
       navigate('/taches');
     } catch (err) {
@@ -77,47 +77,53 @@ export function AuthProvider({ children }) {
   };
 
   const register = async (username, email, password, nom, prenom) => {
+    if (!username || !email || !password || !nom || !prenom) {
+      throw new Error('Tous les champs sont requis pour l\'inscription.');
+    }
     try {
-      const csrfRes = await axios.get('/csrf-token', {
-        withCredentials: true,
-      });
-      const csrfToken = csrfRes.data.csrfToken;
-
-      const res = await axios.post(
+      const csrfToken = await fetchCsrfToken();
+      const res = await axiosInstance.post(
         '/auth/register',
         { username, email, mot_de_passe: password, nom, prenom },
         {
-          headers: { 
+          headers: {
             'Content-Type': 'application/json',
             'X-CSRF-Token': csrfToken,
           },
           withCredentials: true,
         }
       );
-      const { token, user } = res.data;
-      setToken(token);
+      const { token: newToken, user } = res.data;
+      setToken(newToken);
       setUser(user);
-      localStorage.setItem('token', token);
+      localStorage.setItem('token', newToken);
       setError(null);
       navigate('/taches');
     } catch (err) {
-      const errorMessage = err.response?.data?.error || 'Erreur lors de l\'inscription';
       console.error('Erreur d\'inscription:', err.response?.data || err.message);
+      const errorMessage = err.response?.data?.error || 'Erreur lors de l\'inscription';
       setError(errorMessage);
       throw new Error(errorMessage);
     }
   };
 
-  const logout = () => {
-    setToken(null);
-    setUser(null);
-    localStorage.removeItem('token');
-    setError(null);
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      await axiosInstance.post('/auth/logout', {}, { withCredentials: true });
+    } catch (err) {
+      console.warn('Erreur lors de la déconnexion côté serveur:', err.response?.data || err.message);
+      // On continue même si ça échoue côté serveur
+    } finally {
+      setToken(null);
+      setUser(null);
+      localStorage.removeItem('token');
+      setError(null);
+      navigate('/login');
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, register, logout, error }}>
+    <AuthContext.Provider value={{ user, token, login, register, logout: handleLogout, error }}>
       {children}
     </AuthContext.Provider>
   );

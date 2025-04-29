@@ -2,6 +2,7 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import pool from '../config/db.js';
+import axios from 'axios';
 
 export const register = async (req, res, next) => {
   try {
@@ -37,11 +38,28 @@ export const register = async (req, res, next) => {
 
 export const login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
-    console.log('Tentative de connexion:', { email, password }); // Log complet
-    if (!email || !password) {
-      console.log('Données manquantes:', { email, password });
-      return res.status(400).json({ error: 'Email et mot de passe sont requis' });
+    const { email, password, recaptchaToken } = req.body;
+    console.log('Tentative de connexion:', { email });
+
+    if (!email || !password || !recaptchaToken) {
+      console.log('Données manquantes:', { email, password, recaptchaToken });
+      return res.status(400).json({ error: 'Email, mot de passe et reCAPTCHA sont requis' });
+    }
+
+    // Vérifier le jeton reCAPTCHA
+    const recaptchaResponse = await axios.post(
+      'https://www.google.com/recaptcha/api/siteverify',
+      null,
+      {
+        params: {
+          secret: process.env.RECAPTCHA_SECRET_KEY,
+          response: recaptchaToken,
+        },
+      }
+    );
+
+    if (!recaptchaResponse.data.success) {
+      return res.status(400).json({ error: 'Échec de la vérification reCAPTCHA' });
     }
 
     const [users] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
@@ -57,14 +75,14 @@ export const login = async (req, res, next) => {
       return res.status(401).json({ error: 'Mot de passe incorrect' });
     }
 
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'votre_secret_jwt', {
+    const token = jwt.sign({ userId: user.id_user }, process.env.JWT_SECRET || 'votre_secret_jwt', {
       expiresIn: '1h',
     });
 
     res.json({
       token,
       user: {
-        id: user.id,
+        id: user.id_user,
         username: user.username,
         email: user.email,
         nom: user.nom,
@@ -80,34 +98,24 @@ export const login = async (req, res, next) => {
 
 export const getMe = async (req, res, next) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
-    console.log('Requête /auth/me reçue:', token);
-    if (!token) {
-      return res.status(401).json({ error: 'Token manquant' });
-    }
+    const id_user = req.userId;
+    console.log('getMe appelé avec id_user:', id_user);
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'votre_secret_jwt');
-    console.log('Token décodé:', decoded);
-
-    const [users] = await pool.query('SELECT * FROM users WHERE id = ?', [decoded.userId]);
-    console.log('Recherche utilisateur avec id:', decoded.userId, 'Résultat:', users);
+    const [users] = await pool.query(
+      'SELECT id_user, username, email, nom, prenom, role FROM users WHERE id_user = ?',
+      [id_user]
+    );
+    console.log('Recherche utilisateur avec id:', id_user, 'Résultat:', users);
     const user = users[0];
     if (!user) {
+      console.log('Utilisateur non trouvé');
       return res.status(404).json({ error: 'Utilisateur non trouvé' });
     }
 
-    res.json({
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        nom: user.nom,
-        prenom: user.prenom,
-        role: user.role,
-      },
-    });
+    console.log('Réponse getMe:', user);
+    res.json(user);
   } catch (err) {
     console.error('Erreur getMe:', err);
-    next(err);
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 };

@@ -12,7 +12,6 @@ import cors from 'cors';
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Vérification des certificats SSL
 const certPath = '/usr/src/app/certs/backend';
 if (!fs.existsSync(`${certPath}/backend-cert.pem`) || 
     !fs.existsSync(`${certPath}/backend-key.pem`)) {
@@ -20,15 +19,12 @@ if (!fs.existsSync(`${certPath}/backend-cert.pem`) ||
   process.exit(1);
 }
 
-// Chargement des certificats
 const privateKey = fs.readFileSync(`${certPath}/backend-key.pem`, 'utf8');
 const certificate = fs.readFileSync(`${certPath}/backend-cert.pem`, 'utf8');
 const credentials = { key: privateKey, cert: certificate };
 
-// Déterminer l'environnement
 const isProduction = process.env.NODE_ENV === 'production';
 
-// Middleware
 app.use(express.json());
 app.use(cookieParser());
 app.use(
@@ -36,31 +32,44 @@ app.use(
     secret: process.env.SESSION_SECRET || 'votre_secret_session_ici',
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: isProduction, httpOnly: true },
+    cookie: { secure: false, httpOnly: true },
   })
 );
 app.use(cors({
-  origin: ['http://localhost', 'http://localhost:5173', 'https://localhost:5173'],
+  origin: ['http://localhost', 'http://localhost:5173', 'https://localhost:5173', 'https://localhost'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
 }));
 
-// Middleware CSRF
-const csrfProtection = csrf({ cookie: { httpOnly: true, secure: isProduction } });
-app.use(csrfProtection);
+// Middleware CSRF uniquement pour /tasks (désactivé temporairement)
+const csrfProtection = csrf({ cookie: { httpOnly: true, secure: false } });
+app.use('/tasks', taskRoutes); // Corriger ici : ajouter taskRoutes
 
-// Routes
+app.get('/csrf-token', (req, res) => {
+  console.log('Requête /csrf-token reçue, envoi du jeton:', req.csrfToken ? req.csrfToken() : 'disabled');
+  res.json({ csrfToken: req.csrfToken ? req.csrfToken() : 'disabled' });
+});
+
 app.use('/auth', authRoutes);
 app.use('/tasks', taskRoutes);
 
-// Route pour obtenir le jeton CSRF
-app.get('/csrf-token', (req, res) => {
-  console.log('Requête /csrf-token reçue, envoi du jeton:', req.csrfToken());
-  res.json({ csrfToken: req.csrfToken() });
+app.use((req, res, next) => {
+  console.log('Middleware global, headers:', req.headers);
+  console.log('Requête reçue:', req.method, req.url);
+  const oldWrite = res.write;
+  res.write = function (data) {
+    console.log('Écriture dans**MOT DE PASSE** res:', data.toString());
+    return oldWrite.apply(res, arguments);
+  };
+  const oldJson = res.json;
+  res.json = function (data) {
+    console.log('Réponse JSON:', JSON.stringify(data));
+    return oldJson.apply(res, arguments);
+  };
+  next();
 });
 
-// Middleware d'erreur CSRF
 app.use((err, req, res, next) => {
   if (err.code === 'EBADCSRFTOKEN') {
     console.error('Erreur CSRF:', {
@@ -74,13 +83,11 @@ app.use((err, req, res, next) => {
   }
 });
 
-// Middleware de gestion des erreurs
 app.use((err, req, res, next) => {
   console.error('Erreur serveur:', err.stack);
   res.status(500).json({ error: 'Une erreur est survenue.' });
 });
 
-// Démarrage du serveur HTTPS
 https.createServer(credentials, app).listen(PORT, () => {
   console.log(`✅ Serveur démarré sur https://localhost:${PORT}`);
 });

@@ -110,3 +110,105 @@
     font-size: 1rem;
     margin: 0 0 10px;
   }
+  /* frontend/src/styles/Taches.css */
+.taches-select {
+  padding: 10px;
+  margin: 10px 0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* frontend/src/styles/Taches.css */
+.taches-wrapper {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 20px;
+  position: relative;
+}
+
+.welcome-message {
+  position: absolute;
+  top: 70px; /* Ajustez selon la hauteur de la navbar (par exemple, 60px + 10px d'espacement) */
+  right: 20px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+}
+
+.taches-container {
+  max-width: 800px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.taches-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.taches-input,
+.taches-textarea,
+.taches-select {
+  padding: 10px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.taches-textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.taches-button {
+  padding: 10px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.taches-button:hover {
+  background-color: #0056b3;
+}
+
+.taches-button-delete {
+  background-color: #dc3545;
+}
+
+.taches-button-delete:hover {
+  background-color: #b02a37;
+}
+
+.taches-list {
+  list-style: none;
+  padding: 0;
+}
+
+.tache-item {
+  border: 1px solid #ccc;
+  padding: 15px;
+  margin-bottom: 10px;
+  border-radius: 4px;
+}
+
+.tache-item h3 {
+  margin: 0 0 10px 0;
+}
+
+.tache-item p {
+  margin: 5px 0;
+  font-size: 14px;
+}
+
+.error-message {
+  color: red;
+  margin-bottom: 10px;
+}

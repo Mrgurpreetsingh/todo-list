@@ -1,52 +1,50 @@
-// Taches.jsx
-import React, { useState, useEffect, useContext, useCallback } from 'react';
+// frontend/src/pages/Taches.jsx
+import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { AuthContext } from '@context/AuthContext.jsx';
-import '../styles/Taches.css'; // Importer le nouveau CSS
+import '../styles/Taches.css';
 
 function Taches() {
-  const { token } = useContext(AuthContext);
+  const { token, user } = useContext(AuthContext);
   const [taches, setTaches] = useState([]);
   const [titre, setTitre] = useState('');
   const [description, setDescription] = useState('');
+  const [priorite_id, setPrioriteId] = useState('1');
   const [error, setError] = useState(null);
   const [csrfToken, setCsrfToken] = useState(null);
 
-  // Récupérer le jeton CSRF
   useEffect(() => {
     const fetchCsrfToken = async () => {
       try {
-        const res = await axios.get(`${import.meta.env.VITE_API_URL || 'https://localhost:3000'}/csrf-token`, {
+        const apiUrl = import.meta.env.VITE_API_URL || 'https://localhost:3001';
+        const res = await axios.get(`${apiUrl}/csrf-token`, {
           withCredentials: true,
         });
+        console.log('CSRF token:', res.data.csrfToken);
         setCsrfToken(res.data.csrfToken);
       } catch (error) {
         console.error('Erreur lors de la récupération du jeton CSRF:', error);
-        setError('Impossible de récupérer le jeton CSRF.');
+        setCsrfToken('disabled'); // Accepter 'disabled' comme fallback
       }
     };
     fetchCsrfToken();
   }, []);
 
-  // Configurer Axios avec JWT et CSRF
-  const axiosInstance = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'https://localhost:3000',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'X-CSRF-Token': csrfToken,
-    },
-    withCredentials: true,
-  });
+  const axiosInstance = useMemo(() => {
+    return axios.create({
+      baseURL: import.meta.env.VITE_API_URL || 'https://localhost:3001',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'X-CSRF-Token': csrfToken || 'disabled',
+      },
+      withCredentials: true,
+    });
+  }, [token, csrfToken]);
 
-  // Charger les tâches avec useCallback
   const fetchTaches = useCallback(async () => {
-    if (!csrfToken) {
-      setError('Jeton CSRF non disponible.');
-      return;
-    }
     try {
       console.log('Tentative de récupération des tâches...');
-      const res = await axiosInstance.get('/api/taches');
+      const res = await axiosInstance.get('/tasks');
       console.log('Tâches récupérées:', res.data);
       setTaches(res.data);
       setError(null);
@@ -54,31 +52,29 @@ function Taches() {
       console.error('Erreur lors du chargement des tâches:', error);
       setError('Impossible de charger les tâches.');
     }
-  }, [axiosInstance, csrfToken]);
+  }, [axiosInstance]);
 
   useEffect(() => {
-    if (token && csrfToken) {
+    if (token && csrfToken !== null) {
       fetchTaches();
     } else {
-      setError('Vous devez être connecté et avoir un jeton CSRF pour voir les tâches.');
+      setError('Vous devez être connecté pour voir les tâches.');
     }
   }, [token, csrfToken, fetchTaches]);
 
   const handleAjouterTache = async (e) => {
     e.preventDefault();
-    if (!csrfToken) {
-      setError('Jeton CSRF non disponible.');
-      return;
-    }
     try {
-      console.log('Ajout de la tâche:', { titre, description });
-      await axiosInstance.post('/api/taches', {
+      console.log('Ajout de la tâche:', { titre, description, priorite_id });
+      await axiosInstance.post('/tasks', {
         titre,
         description,
+        priorite_id: parseInt(priorite_id),
       });
       setTitre('');
       setDescription('');
-      fetchTaches();
+      setPrioriteId('1');
+      await fetchTaches();
       setError(null);
     } catch (error) {
       console.error('Erreur lors de l\'ajout de la tâche:', error);
@@ -87,14 +83,10 @@ function Taches() {
   };
 
   const handleSupprimerTache = async (id) => {
-    if (!csrfToken) {
-      setError('Jeton CSRF non disponible.');
-      return;
-    }
     try {
       console.log('Suppression de la tâche:', id);
-      await axiosInstance.delete(`/api/taches/${id}`);
-      fetchTaches();
+      await axiosInstance.delete(`/tasks/${id}`);
+      await fetchTaches();
       setError(null);
     } catch (error) {
       console.error('Erreur lors de la suppression de la tâche:', error);
@@ -103,16 +95,12 @@ function Taches() {
   };
 
   const handleToggleComplete = async (id, est_complete) => {
-    if (!csrfToken) {
-      setError('Jeton CSRF non disponible.');
-      return;
-    }
     try {
       console.log('Mise à jour de la tâche:', id, { est_complete: !est_complete });
-      await axiosInstance.put(`/api/taches/${id}`, {
+      await axiosInstance.put(`/tasks/${id}`, {
         est_complete: !est_complete,
       });
-      fetchTaches();
+      await fetchTaches();
       setError(null);
     } catch (error) {
       console.error('Erreur lors de la mise à jour de la tâche:', error);
@@ -120,8 +108,13 @@ function Taches() {
     }
   };
 
+  console.log('Tâches rendues:', taches);
+
   return (
     <div className="taches-wrapper">
+      <div className="welcome-message">
+        Bienvenue, {user?.username || 'Utilisateur'}
+      </div>
       <div className="taches-container">
         <h1>Mes Tâches</h1>
         {error && <p className="error-message">{error}</p>}
@@ -140,6 +133,15 @@ function Taches() {
             onChange={(e) => setDescription(e.target.value)}
             className="taches-textarea"
           />
+          <select
+            value={priorite_id}
+            onChange={(e) => setPrioriteId(e.target.value)}
+            className="taches-select"
+          >
+            <option value="1">Basse</option>
+            <option value="2">Moyenne</option>
+            <option value="3">Haute</option>
+          </select>
           <button type="submit" className="taches-button">Ajouter</button>
         </form>
         <ul className="taches-list">
@@ -153,6 +155,7 @@ function Taches() {
                 {tache.titre}
               </h3>
               <p>{tache.description}</p>
+              <p>Priorité: {tache.priorite_niveau || 'Aucune'}</p>
               <button
                 onClick={() =>
                   handleToggleComplete(tache.id_tache, tache.est_complete)

@@ -13,6 +13,7 @@ export default defineConfig({
     },
   },
   server: {
+    port: 5173,
     proxy: {
       '/auth': {
         target: 'https://localhost:3001',
@@ -26,11 +27,11 @@ export default defineConfig({
         secure: false,
         rewrite: (path) => path.replace(/^\/csrf-token/, '/csrf-token'),
       },
-      '/api': {
+      '/tasks': {
         target: 'https://localhost:3001',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path.replace(/^\/api/, '/api'),
+        rewrite: (path) => path.replace(/^\/tasks/, '/tasks'),
       },
     },
   },

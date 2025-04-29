@@ -1,5 +1,4 @@
-# docker-compose.yml
-version: '3.8'
+# backend/docker-compose.yml
 services:
   db:
     image: mysql:8.0
@@ -27,13 +26,15 @@ services:
       - DB_USER=root
       - DB_PASSWORD=rootpassword
       - DB_NAME=todo_users
-      - JWT_SECRET=votre_secret_jwt_ici
+      - JWT_SECRET=v FACEBOOKotre_secret_jwt_ici
       - SESSION_SECRET=votre_secret_session_ici
       - PORT=3000
+      - NODE_ENV=development # Ajouter pour tests
     volumes:
       - ./backend:/usr/src/app
-      - /usr/src/app/node_modules # Préserve node_modules du conteneur
+      - /usr/src/app/node_modules
       - ./certs/backend:/usr/src/app/certs/backend
+      - ./backend/.env:/usr/src/app/.env
     networks:
       - todo-network
 
@@ -43,10 +44,15 @@ services:
       dockerfile: Dockerfile
     ports:
       - "80:80"
+      - "443:443"
     depends_on:
       - backend
     environment:
-      - VITE_API_URL=http://backend:3000
+      - VITE_API_URL=https://backend:3000
+    volumes:
+      - ./frontend/dist:/usr/share/nginx/html
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./certs/frontend:/etc/nginx/certs
     networks:
       - todo-network
 
