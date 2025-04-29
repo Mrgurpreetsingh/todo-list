@@ -1,85 +1,142 @@
-// frontend/src/pages/Login.jsx
-import React, { useState, useContext, useRef, useEffect } from 'react';
-import { AuthContext } from '@context/AuthContext.jsx';
+import { useContext, useRef, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '@context/AuthContext.jsx';
+import { Formik, Form, Field, ErrorMessage } from 'formik';
+import * as Yup from 'yup';
 import ReCAPTCHA from 'react-google-recaptcha';
-import '../styles/Login.css';
+import FormContainer from '@component/FormContainer.jsx';
+import '../styles/login.css';
+
+// Schéma de validation avec Yup
+const LoginSchema = Yup.object().shape({
+  email: Yup.string()
+    .email('Adresse email invalide')
+    .required('L\'email est requis'),
+  password: Yup.string()
+    .min(6, 'Le mot de passe doit contenir au moins 6 caractères')
+    .required('Le mot de passe est requis'),
+});
 
 function Login() {
   const { login } = useContext(AuthContext);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState(null);
-  const recaptchaRef = useRef();
+  const recaptchaRef = useRef(null);
   const navigate = useNavigate();
+  const [recaptchaLoaded, setRecaptchaLoaded] = useState(false);
+  const [recaptchaError, setRecaptchaError] = useState(null);
 
   useEffect(() => {
-    console.log('Vérification du chargement de reCAPTCHA...');
-    if (!window.grecaptcha) {
-      console.error('reCAPTCHA script non chargé. Vérifiez la connexion réseau ou la clé de site.');
-    } else {
-      console.log('reCAPTCHA script chargé.');
-      window.grecaptcha.ready(() => {
-        console.log('reCAPTCHA prêt à être rendu.');
-      });
+    console.log('Démarrage vérification reCAPTCHA...');
+    try {
+      if (window.grecaptcha) {
+        console.log('reCAPTCHA script détecté.');
+        window.grecaptcha.ready(() => {
+          console.log('reCAPTCHA prêt à être rendu.');
+          setRecaptchaLoaded(true);
+        });
+      } else {
+        console.error('reCAPTCHA script non chargé.');
+        setRecaptchaError('Erreur de chargement reCAPTCHA.');
+      }
+    } catch (err) {
+      console.error('Erreur dans useEffect reCAPTCHA:', err);
+      setRecaptchaError('Erreur lors de l\'initialisation de reCAPTCHA.');
     }
   }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError(null);
-
-    const recaptchaToken = recaptchaRef.current?.getValue();
-    console.log('Submitting login with:', { email, password, recaptchaToken });
-    if (!recaptchaToken) {
-      setError('Veuillez compléter le reCAPTCHA.');
-      return;
-    }
-
-    try {
-      await login(email, password, recaptchaToken);
-      navigate('/taches');
-    } catch (error) {
-      console.error('Erreur lors de la connexion:', error);
-      setError(error.message || 'Erreur lors de la connexion.');
-    }
-  };
+  // const fetchCsrfToken = async () => {
+  //   try {
+  //     const response = await axios.get('/csrf-token', { withCredentials: true });
+  //     return response.data.csrfToken;
+  //   } catch (error) {
+  //     console.error('Erreur CSRF:', error);
+  //     throw error;
+  //   }
+  // };
 
   return (
-    <div className="login-wrapper">
-      <div className="login-container">
-        <h1>Connexion</h1>
-        {error && <p className="error-message">{error}</p>}
-        <form onSubmit={handleSubmit} className="login-form">
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="login-input"
-          />
-          <input
-            type="password"
-            placeholder="Mot de passe"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="login-input"
-          />
-          <div className="recaptcha-container">
-            <ReCAPTCHA
-              sitekey="6Ldn1CcrAAAAAMkKoTuHPzPEoKdTXtqNm-JJrG5I" // Remplacez par la nouvelle clé
-              ref={recaptchaRef}
-              onChange={(token) => console.log('reCAPTCHA onChange:', token)}
-              onErrored={() => console.error('Erreur de chargement reCAPTCHA')}
-              onExpired={() => console.log('reCAPTCHA expiré')}
-            />
-          </div>
-          <button type="submit" className="login-button">Se connecter</button>
-        </form>
-      </div>
-    </div>
+    <FormContainer title="Connexion">
+      <Formik
+        initialValues={{ email: '', password: '' }}
+        validationSchema={LoginSchema}
+        onSubmit={async (values, { setSubmitting, setStatus }) => {
+          try {
+            const recaptchaToken = recaptchaRef.current?.getValue();
+            if (!recaptchaToken) {
+              setStatus({ error: 'Veuillez compléter le reCAPTCHA' });
+              return;
+            }
+            console.log('📥 Envoi requête login:', { email: values.email, recaptchaToken });
+            // const csrfToken = await fetchCsrfToken();
+            await login(values.email, values.password, recaptchaToken);
+            console.log('📤 Connexion réussie, redirection vers /taches');
+            navigate('/taches');
+          } catch (error) {
+            const errorMessage = error.message || 'Erreur lors de la connexion';
+            setStatus({ error: errorMessage });
+            console.error('❌ Erreur lors de la connexion:', error);
+          } finally {
+            setSubmitting(false);
+          }
+        }}
+      >
+        {({ isSubmitting, status, errors, touched }) => (
+          <Form className="form">
+            {status && status.error && (
+              <div className="error-message">{status.error}</div>
+            )}
+            {recaptchaError && (
+              <div className="error-message">{recaptchaError}</div>
+            )}
+            <div className="form-group">
+              <Field
+                type="email"
+                name="email"
+                placeholder="Email"
+                className={`login-input ${errors.email && touched.email ? 'input-error' : ''}`}
+                autoComplete="email"
+              />
+              <ErrorMessage name="email" component="div" className="field-error" />
+            </div>
+            <div className="form-group">
+              <Field
+                type="password"
+                name="password"
+                placeholder="Mot de passe"
+                className={`login-input ${errors.password && touched.password ? 'input-error' : ''}`}
+                autoComplete="current-password"
+              />
+              <ErrorMessage name="password" component="div" className="field-error" />
+            </div>
+            <div className="recaptcha-container">
+              {recaptchaLoaded ? (
+                <ReCAPTCHA
+                  sitekey="6Le5zycrAAAAAEw1VI0MQXUoFVayvReOLwJYxtCI"
+                  ref={recaptchaRef}
+                  onChange={(token) => console.log('reCAPTCHA onChange:', token)}
+                  onErrored={(err) => {
+                    console.error('Erreur reCAPTCHA:', err);
+                    setRecaptchaError('Erreur de chargement du reCAPTCHA.');
+                  }}
+                  onExpired={() => {
+                    console.log('reCAPTCHA expiré');
+                    setRecaptchaError('Le reCAPTCHA a expiré.');
+                  }}
+                />
+              ) : (
+                <div>Chargement du reCAPTCHA...</div>
+              )}
+            </div>
+            <button
+              type="submit"
+              className="login-button"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Connexion en cours...' : 'Se connecter'}
+            </button>
+          </Form>
+        )}
+      </Formik>
+    </FormContainer>
   );
 }
 

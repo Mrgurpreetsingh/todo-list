@@ -1,4 +1,3 @@
-// backend/controllers/auth.controller.js
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import pool from '../config/db.js';
@@ -6,8 +5,30 @@ import axios from 'axios';
 
 export const register = async (req, res, next) => {
   try {
-    const { username, email, mot_de_passe, nom, prenom } = req.body;
-    console.log('Tentative d\'inscription:', { username, email, nom, prenom });
+    const { username, email, mot_de_passe, nom, prenom, recaptchaToken } = req.body;
+    console.log('Tentative d\'inscription:', { username, email, nom, prenom, recaptchaToken });
+
+    if (!username || !email || !mot_de_passe || !nom || !prenom || !recaptchaToken) {
+      console.log('Données manquantes:', { username, email, mot_de_passe, nom, prenom, recaptchaToken });
+      return res.status(400).json({ error: 'Tous les champs et reCAPTCHA sont requis' });
+    }
+
+    // Vérifier le jeton reCAPTCHA
+    const recaptchaResponse = await axios.post(
+      'https://www.google.com/recaptcha/api/siteverify',
+      null,
+      {
+        params: {
+          secret: process.env.RECAPTCHA_SECRET_KEY,
+          response: recaptchaToken,
+        },
+      }
+    );
+
+    if (!recaptchaResponse.data.success) {
+      console.log('Échec reCAPTCHA:', recaptchaResponse.data);
+      return res.status(400).json({ error: 'Échec de la vérification reCAPTCHA' });
+    }
 
     const [existingUsers] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
     console.log('Recherche utilisateur avec email:', email, 'Résultat:', existingUsers);
@@ -25,6 +46,7 @@ export const register = async (req, res, next) => {
     const token = jwt.sign({ userId: result.insertId }, process.env.JWT_SECRET || 'votre_secret_jwt', {
       expiresIn: '1h',
     });
+    console.log('Token créé:', token); 
 
     res.status(201).json({
       token,
@@ -118,4 +140,11 @@ export const getMe = async (req, res, next) => {
     console.error('Erreur getMe:', err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
+};
+
+export const logout = (req, res) => {
+  res.clearCookie('token'); // ou le nom de ton cookie JWT
+  req.session?.destroy(() => {
+    res.status(200).json({ message: 'Déconnecté avec succès' });
+  });
 };

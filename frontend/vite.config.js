@@ -1,4 +1,3 @@
-// frontend/vite.config.js
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
@@ -16,19 +15,19 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/auth': {
-        target: 'https://localhost:3001',
+        target: process.env.VITE_API_URL || 'https://localhost:3000',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/auth/, '/auth'),
       },
-      '/csrf-token': {
-        target: 'https://localhost:3001',
-        changeOrigin: true,
-        secure: false,
-        rewrite: (path) => path.replace(/^\/csrf-token/, '/csrf-token'),
-      },
+      // '/csrf-token': {
+      //   target: process.env.VITE_API_URL || 'https://localhost:3000',
+      //   changeOrigin: true,
+      //   secure: false,
+      //   rewrite: (path) => path.replace(/^\/csrf-token/, '/csrf-token'),
+      // },
       '/tasks': {
-        target: 'https://localhost:3001',
+        target: process.env.VITE_API_URL || 'https://localhost:3000',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/tasks/, '/tasks'),
