@@ -13,7 +13,6 @@ export const register = async (req, res, next) => {
       return res.status(400).json({ error: 'Tous les champs et reCAPTCHA sont requis' });
     }
 
-    // Vérifier le jeton reCAPTCHA
     const recaptchaResponse = await axios.post(
       'https://www.google.com/recaptcha/api/siteverify',
       null,
@@ -43,10 +42,10 @@ export const register = async (req, res, next) => {
     );
     console.log('Utilisateur créé:', { id: result.insertId });
 
-    const token = jwt.sign({ userId: result.insertId }, process.env.JWT_SECRET || 'votre_secret_jwt', {
-      expiresIn: '1h',
+    const token = jwt.sign({ userId: result.insertId }, process.env.JWT_SECRET, {
+      expiresIn: '7d',
     });
-    console.log('Token créé:', token); 
+    console.log('Token créé:', token);
 
     res.status(201).json({
       token,
@@ -68,7 +67,6 @@ export const login = async (req, res, next) => {
       return res.status(400).json({ error: 'Email, mot de passe et reCAPTCHA sont requis' });
     }
 
-    // Vérifier le jeton reCAPTCHA
     const recaptchaResponse = await axios.post(
       'https://www.google.com/recaptcha/api/siteverify',
       null,
@@ -97,14 +95,14 @@ export const login = async (req, res, next) => {
       return res.status(401).json({ error: 'Mot de passe incorrect' });
     }
 
-    const token = jwt.sign({ userId: user.id_user }, process.env.JWT_SECRET || 'votre_secret_jwt', {
-      expiresIn: '1h',
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
+      expiresIn: '7d',
     });
 
     res.json({
       token,
       user: {
-        id: user.id_user,
+        id: user.id,
         username: user.username,
         email: user.email,
         nom: user.nom,
@@ -124,7 +122,7 @@ export const getMe = async (req, res, next) => {
     console.log('getMe appelé avec id_user:', id_user);
 
     const [users] = await pool.query(
-      'SELECT id_user, username, email, nom, prenom, role FROM users WHERE id_user = ?',
+      'SELECT id, username, email, nom, prenom, role FROM users WHERE id = ?',
       [id_user]
     );
     console.log('Recherche utilisateur avec id:', id_user, 'Résultat:', users);
@@ -143,7 +141,7 @@ export const getMe = async (req, res, next) => {
 };
 
 export const logout = (req, res) => {
-  res.clearCookie('token'); // ou le nom de ton cookie JWT
+  res.clearCookie('token');
   req.session?.destroy(() => {
     res.status(200).json({ message: 'Déconnecté avec succès' });
   });

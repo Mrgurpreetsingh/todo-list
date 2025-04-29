@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
+// frontend/src/pages/Taches.jsx
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import axios from 'axios';
-import https from 'https';
 import { AuthContext } from '@context/AuthContext.jsx';
 import '../styles/Taches.css';
 
@@ -11,40 +11,24 @@ function Taches() {
   const [description, setDescription] = useState('');
   const [priorite_id, setPrioriteId] = useState('1');
   const [error, setError] = useState(null);
-  // const [csrfToken, setCsrfToken] = useState(null);
 
-  // useEffect(() => {
-  //   const fetchCsrfToken = async () => {
-  //     try {
-  //       const apiUrl = import.meta.env.VITE_API_URL || 'https://localhost:3000';
-  //       const res = await axios.get(`${apiUrl}/csrf-token`, {
-  //         withCredentials: true,
-  //       });
-  //       console.log('CSRF token:', res.data.csrfToken);
-  //       setCsrfToken(res.data.csrfToken);
-  //     } catch (error) {
-  //       console.error('Erreur lors de la récupération du jeton CSRF:', error);
-  //       setCsrfToken('disabled'); // Accepter 'disabled' comme fallback
-  //     }
-  //   };
-  //   fetchCsrfToken();
-  // }, []);
+  const apiUrl = import.meta.env.VITE_API_URL || '/api';
+  console.log('🔍 VITE_API_URL dans Taches:', apiUrl);
 
-  const axiosInstance = useMemo(() => {
+  const getAxiosInstance = useCallback(() => {
     return axios.create({
-      baseURL: import.meta.env.VITE_API_URL || 'https://localhost:3000',
-      httpsAgent: new https.Agent({ rejectUnauthorized: false }),
+      baseURL: apiUrl,
       headers: {
         Authorization: `Bearer ${token}`,
-        // 'X-CSRF-Token': csrfToken || 'disabled',
       },
       withCredentials: true,
     });
-  }, [token /*, csrfToken*/]);
+  }, [token, apiUrl]);
 
   const fetchTaches = useCallback(async () => {
     try {
       console.log('📥 Tentative de récupération des tâches...');
+      const axiosInstance = getAxiosInstance();
       const res = await axiosInstance.get('/tasks');
       console.log('📤 Tâches récupérées:', res.data);
       setTaches(res.data);
@@ -53,10 +37,10 @@ function Taches() {
       console.error('❌ Erreur lors du chargement des tâches:', error);
       setError('Impossible de charger les tâches.');
     }
-  }, [axiosInstance]);
+  }, [getAxiosInstance]);
 
   useEffect(() => {
-    if (token /*&& csrfToken !== null*/) {
+    if (token) {
       fetchTaches();
     } else {
       setError('Vous devez être connecté pour voir les tâches.');
@@ -67,9 +51,10 @@ function Taches() {
     e.preventDefault();
     try {
       console.log('📥 Ajout de la tâche:', { titre, description, priorite_id });
+      const axiosInstance = getAxiosInstance();
       await axiosInstance.post('/tasks', {
-        titre,
-        description,
+        titre: titre.trim(),
+        description: description.trim() || null,
         priorite_id: parseInt(priorite_id),
       });
       setTitre('');
@@ -86,6 +71,7 @@ function Taches() {
   const handleSupprimerTache = async (id) => {
     try {
       console.log('📥 Suppression de la tâche:', id);
+      const axiosInstance = getAxiosInstance();
       await axiosInstance.delete(`/tasks/${id}`);
       await fetchTaches();
       setError(null);
@@ -98,6 +84,7 @@ function Taches() {
   const handleToggleComplete = async (id, est_complete) => {
     try {
       console.log('📥 Mise à jour de la tâche:', id, { est_complete: !est_complete });
+      const axiosInstance = getAxiosInstance();
       await axiosInstance.put(`/tasks/${id}`, {
         est_complete: !est_complete,
       });
@@ -109,7 +96,7 @@ function Taches() {
     }
   };
 
-  console.log('Tâches rendues:', taches);
+  console.log('Rendu de Taches, user:', user, 'token:', token, 'taches:', taches);
 
   return (
     <div className="taches-wrapper">

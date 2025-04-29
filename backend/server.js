@@ -13,37 +13,70 @@ import rateLimit from 'express-rate-limit';
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Limiter à 100 requêtes par 15 minutes globalement
+// Déterminer l'environnement
+const isProduction = process.env.NODE_ENV === 'production';
+
+// Limiter adapté selon l'environnement
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // max 100 requêtes
+  max: isProduction ? 100 : 5000, // 100 en prod, 5000 en dev
   message: 'Trop de requêtes, réessayez plus tard.',
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-// Limiter à 10 requêtes par 15 minutes pour /auth
+// Limiter pour /auth adapté selon l'environnement
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // max 10 requêtes
+  max: isProduction ? 100 : 5000, // 100 en prod, 5000 en dev
   message: 'Trop de tentatives de connexion, réessayez plus tard.',
   standardHeaders: true,
   legacyHeaders: false,
 });
 
+// test CSP
+const TestCSP = (req, res, next) => {
+  const cspRules = {
+    'connect-src': [
+      "'self'",
+      'https://www.google.com',
+      'https://www.gstatic.com',
+      'https://localhost:3000',
+      'https://backend:3000',
+    ],
+    'script-src': [
+      "'self'",
+      'https://www.google.com',
+      'https://www.gstatic.com',
+      "'unsafe-inline'",
+    ],
+  };
+  const url = req.url;
+  const isConnectAllowed = cspRules['connect-src'].some((source) => {
+    if (source === "'self'") return url.startsWith('/');
+    return url.includes(source.replace('https://', ''));
+  });
+  console.log(`🔐 TEST CSP: connect-src vers ${url} - ${isConnectAllowed ? 'Autorisé' : 'Bloqué'}`);
+  next();
+};
+
 app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "https://www.google.com", "https://www.gstatic.com"],
-      connectSrc: ["'self'", "https://www.google.com", "https://www.gstatic.com", "https://backend:3000"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:"],
-      frameSrc: ["'self'", "https://www.google.com"],
-    },
+  contentSecurityPolicy: false, // Désactiver CSP pour les tests
+  hsts: {
+    maxAge: 0, // Désactiver HSTS en développement
   },
 }));
-app.use(limiter); // Appliquer la limitation globale
+
+// Appliquer le rate limiting uniquement en production ou conditionnellement
+if (isProduction) {
+  app.use(limiter);
+} else {
+  console.log('⚠️ Rate limiting désactivé ou augmenté en environnement de développement');
+  // En dev, on peut soit le désactiver complètement, soit utiliser un limiter avec des valeurs très hautes
+  app.use(limiter); // Les valeurs ont déjà été augmentées selon l'environnement
+}
+
+app.use(TestCSP); // Appliquer la simulation CSP
 
 const certPath = '/usr/src/app/certs/backend';
 if (!fs.existsSync(`${certPath}/backend-cert.pem`) || 
@@ -55,8 +88,6 @@ if (!fs.existsSync(`${certPath}/backend-cert.pem`) ||
 const privateKey = fs.readFileSync(`${certPath}/backend-key.pem`, 'utf8');
 const certificate = fs.readFileSync(`${certPath}/backend-cert.pem`, 'utf8');
 const credentials = { key: privateKey, cert: certificate };
-
-const isProduction = process.env.NODE_ENV === 'production';
 
 app.use(express.json());
 app.use(cookieParser());
@@ -84,11 +115,18 @@ app.use('/tasks', taskRoutes); // Corriger ici : ajouter taskRoutes
 //   res.json({ csrfToken: req.csrfToken ? req.csrfToken() : 'disabled' });
 // });
 
-app.use('/auth', authLimiter, authRoutes); // Appliquer la limitation spécifique pour /auth
-app.use('/tasks', taskRoutes);
+// Appliquer le rate limiting d'auth conditionnellement aussi
+if (isProduction) {
+  app.use('/auth', authLimiter, authRoutes);
+} else {
+  app.use('/auth', authRoutes); // Sans limitation en développement, ou avec une limitation très haute
+}
+
+// Cette ligne est potentiellement redondante si déjà définie plus haut
+// app.use('/tasks', taskRoutes);
 
 app.use((req, res, next) => {
-  console.log('📥 Requête reçue:', req.method, req.url, req.headers);
+  console.log('📥 Requête reçue:', req.method, req.url, req.headers.authorization ? 'Token présent' : 'Pas de token');
   const oldWrite = res.write;
   res.write = function (data) {
     console.log('📤 Écriture dans res:', data.toString());

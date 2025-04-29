@@ -16,7 +16,7 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Copier la configuration Nginx et les certificats SSL
 COPY ./nginx.conf /etc/nginx/conf.d/default.conf
-COPY ./certs/frontend /etc/nginx/certs
+COPY ./certs /etc/nginx/certs
 
 # Donner les permissions nécessaires à l'utilisateur nginx
 RUN chown -R nginx:nginx /usr/share/nginx/html
