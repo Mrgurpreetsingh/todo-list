@@ -11,50 +11,49 @@ import { verifyToken, requireAdmin } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
-// Routes pour l'utilisateur connecté (placées en premier pour éviter les conflits)
-router.get('/me', verifyToken, async (req, res) => {
-  console.log('📡 GET /me appelé avec userId:', req.userId);
+// Créer un utilisateur
+router.post('/', async (req, res) => {
+  console.log('📡 POST /api/users appelé avec:', req.body);
   try {
-    const user = await getUserById(req.userId);
-    if (!user) {
-      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    const { username, email, mot_de_passe, nom, prenom } = req.body;
+    if (!username || !email || !mot_de_passe) {
+      return res.status(400).json({ error: 'Username, email et mot de passe sont requis' });
     }
-    res.status(200).json(user);
+    await createUserController(req, res);
   } catch (err) {
-    console.error('Erreur dans GET /me:', err);
+    console.error('Erreur dans POST /api/users:', err);
     res.status(500).json({ error: err.message || 'Erreur serveur' });
   }
 });
 
+// Récupérer l'utilisateur connecté
+router.get('/me', verifyToken, async (req, res) => {
+  console.log('📡 GET /api/users/me appelé avec userId:', req.userId);
+  try {
+    req.params.id = req.userId; // Simuler l'ID pour getUserController
+    await getUserController(req, res);
+  } catch (err) {
+    console.error('Erreur dans GET /api/users/me:', err);
+    res.status(500).json({ error: err.message || 'Erreur serveur' });
+  }
+});
+
+// Mettre à jour l'utilisateur connecté
 router.put('/me', verifyToken, async (req, res) => {
-  console.log('📡 PUT /me appelé avec userId:', req.userId, 'updates:', req.body);
+  console.log('📡 PUT /api/users/me appelé avec userId:', req.userId, 'updates:', req.body);
   try {
-    const updates = req.body;
-    await updateUser(req.userId, updates);
-    const updatedUser = await getUserById(req.userId);
-    res.status(200).json({ message: 'Utilisateur mis à jour', user: updatedUser });
+    req.params.id = req.userId; // Simuler l'ID pour updateUserController
+    await updateUserController(req, res);
   } catch (err) {
-    console.error('Erreur dans PUT /me:', err);
+    console.error('Erreur dans PUT /api/users/me:', err);
     res.status(500).json({ error: err.message || 'Erreur serveur' });
   }
 });
 
-router.delete('/me', verifyToken, async (req, res) => {
-  console.log('📡 DELETE /me appelé avec userId:', req.userId);
-  try {
-    await deleteUser(req.userId);
-    res.status(200).json({ message: 'Utilisateur supprimé' });
-  } catch (err) {
-    console.error('Erreur dans DELETE /me:', err);
-    res.status(500).json({ error: err.message || 'Erreur serveur' });
-  }
-});
-
-// Routes demandées pour le projet
-router.post('/', createUserController); // POST /users
-router.get('/', verifyToken, requireAdmin, getAllUsersController); // GET /users
-router.get('/user/:id', verifyToken, getUserController); // GET /user/{id}
-router.put('/user/:id', verifyToken, updateUserController); // PUT /user/{id}
-router.delete('/user/:id', verifyToken, deleteUserController); // DELETE /user/{id}
+// Routes admin
+router.get('/', verifyToken, requireAdmin, getAllUsersController);
+router.get('/user/:id', verifyToken, getUserController);
+router.put('/user/:id', verifyToken, updateUserController);
+router.delete('/user/:id', verifyToken, deleteUserController);
 
 export default router;
