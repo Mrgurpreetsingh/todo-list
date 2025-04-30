@@ -9,6 +9,7 @@ export function AuthProvider({ children }) {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Instance Axios unique
   const axiosInstanceRef = useRef(null);
   if (!axiosInstanceRef.current) {
     axiosInstanceRef.current = axios.create({
@@ -17,11 +18,26 @@ export function AuthProvider({ children }) {
   }
   const axiosInstance = axiosInstanceRef.current;
 
+  // test de vérification CSP alignée avec backend
   const CheckCSP = useCallback((url, type) => {
-    console.log(`🔐 TEST CSP: ${type} vers ${url} - Autorisé`);
-    return true;
+    const cspRules = {
+      'connect-src': [
+        "'self'",
+        'https://www.google.com',
+        'https://www.gstatic.com',
+        'https://localhost:3000',
+        'https://backend:3000',
+      ],
+    };
+    const isAllowed = cspRules[type]?.some((source) => {
+      if (source === "'self'") return url.startsWith('/');
+      return url.includes(source.replace('https://', ''));
+    }) ?? true;
+    console.log(`🔐 TEST CSP: ${type} vers ${url} - ${isAllowed ? 'Autorisé' : 'Bloqué'}`);
+    return isAllowed;
   }, []);
 
+  // Vérification initiale de l'authentification
   useEffect(() => {
     let estMonte = true;
 
@@ -32,7 +48,9 @@ export function AuthProvider({ children }) {
       }
 
       try {
-        CheckCSP('/auth/me', 'connect-src');
+        if (!CheckCSP('/auth/me', 'connect-src')) {
+          throw new Error('Requête bloquée par CSP');
+        }
         const res = await axiosInstance.get('/auth/me', {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -63,13 +81,17 @@ export function AuthProvider({ children }) {
     };
   }, [token, axiosInstance, CheckCSP]);
 
+  // Fonction de connexion
   const login = useCallback(async (email, password, recaptchaToken) => {
     if (!email || !password || !recaptchaToken) {
       throw new Error('Email, mot de passe et reCAPTCHA sont requis.');
     }
     try {
+      setError(null); // Réinitialiser l'erreur
       console.log('📥 Envoi requête login:', { email, recaptchaToken });
-      CheckCSP('/auth/login', 'connect-src');
+      if (!CheckCSP('/auth/login', 'connect-src')) {
+        throw new Error('Requête bloquée par CSP');
+      }
       const res = await axiosInstance.post(
         '/auth/login',
         { email, password, recaptchaToken },
@@ -85,25 +107,25 @@ export function AuthProvider({ children }) {
       setToken(newToken);
       setUser(user);
       localStorage.setItem('token', newToken);
-      setError(null);
     } catch (err) {
       console.error('❌ Erreur login:', err.response?.data || err.message);
-      const errorMessage =
-        err.response?.data?.error ||
-        err.response?.data?.message ||
-        'Une erreur est survenue lors de la connexion';
+      const errorMessage = err.response?.data?.error || 'Erreur lors de la connexion';
       setError(errorMessage);
       throw new Error(errorMessage);
     }
   }, [axiosInstance, CheckCSP]);
 
+  // Fonction d'inscription
   const register = useCallback(async (username, email, password, nom, prenom, recaptchaToken) => {
     if (!username || !email || !password || !nom || !prenom || !recaptchaToken) {
       throw new Error('Tous les champs et reCAPTCHA sont requis pour l\'inscription.');
     }
     try {
+      setError(null); // Réinitialiser l'erreur
       console.log('📥 Envoi requête register:', { username, email, nom, prenom, recaptchaToken });
-      CheckCSP('/auth/register', 'connect-src');
+      if (!CheckCSP('/auth/register', 'connect-src')) {
+        throw new Error('Requête bloquée par CSP');
+      }
       const res = await axiosInstance.post(
         '/auth/register',
         { username, email, mot_de_passe: password, nom, prenom, recaptchaToken },
@@ -119,7 +141,6 @@ export function AuthProvider({ children }) {
       setToken(newToken);
       setUser(user);
       localStorage.setItem('token', newToken);
-      setError(null);
     } catch (err) {
       console.error('❌ Erreur d\'inscription:', err.response?.data || err.message);
       const errorMessage = err.response?.data?.error || 'Erreur lors de l\'inscription';
@@ -128,9 +149,12 @@ export function AuthProvider({ children }) {
     }
   }, [axiosInstance, CheckCSP]);
 
+  // Fonction de déconnexion
   const handleLogout = useCallback(async () => {
     try {
-      CheckCSP('/auth/logout', 'connect-src');
+      if (!CheckCSP('/auth/logout', 'connect-src')) {
+        throw new Error('Requête bloquée par CSP');
+      }
       await axiosInstance.post('/auth/logout', {}, { withCredentials: true });
     } catch (err) {
       console.warn('⚠️ Erreur lors de la déconnexion côté serveur:', err.response?.data || err.message);
@@ -142,9 +166,33 @@ export function AuthProvider({ children }) {
     }
   }, [axiosInstance, CheckCSP]);
 
+  // Fonction pour mettre à jour l'utilisateur après modification du profil
+  const updateUser = useCallback(async () => {
+    try {
+      if (!token) {
+        throw new Error('Aucun token disponible');
+      }
+      if (!CheckCSP('/api/users/me', 'connect-src')) {
+        throw new Error('Requête bloquée par CSP');
+      }
+      const res = await axiosInstance.get('/api/users/me', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        withCredentials: true,
+      });
+      console.log('📤 Mise à jour utilisateur:', res.data);
+      setUser(res.data);
+    } catch (err) {
+      console.error('❌ Erreur updateUser:', err.response?.data || err.message);
+      setError(err.response?.data?.error || 'Erreur lors de la mise à jour de l\'utilisateur');
+    }
+  }, [axiosInstance, token, CheckCSP]);
+
+  // Valeur du contexte mémoïsée
   const value = useMemo(
-    () => ({ user, token, login, register, logout: handleLogout, error, loading }),
-    [user, token, error, loading, login, register, handleLogout]
+    () => ({ user, token, login, register, logout: handleLogout, updateUser, error, loading }),
+    [user, token, error, loading, login, register, handleLogout, updateUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

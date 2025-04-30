@@ -6,7 +6,7 @@ import Login from '@pages/login.jsx'; // Corriger la casse et le chemin
 import Register from '@pages/register.jsx'; // Corriger la casse
 import Navbar from '../component/Navbar.jsx';
 import PrivateRoute from '../component/PrivateRoutes.jsx'; // Nouveau composant pour protéger les routes
-
+import Profile from '@pages/Profile';
 function App() {
   return (
     <>
@@ -23,6 +23,7 @@ function App() {
         />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/profile" element={<Profile />} />
       </Routes>
     </>
   );

@@ -1,16 +1,17 @@
-// Navbar.jsx
+// frontend/src/components/Navbar.jsx
 import React, { useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
 import '../styles/Navbar.css';
 
 function Navbar() {
-  const { token, logout } = useContext(AuthContext); // Supposons que AuthContext fournit logout
+  const { token, logout } = useContext(AuthContext); // Récupère token et logout depuis AuthContext
   const navigate = useNavigate();
 
+  // Gestion de la déconnexion
   const handleLogout = () => {
-    logout(); // Appeler la fonction de déconnexion
-    navigate('/login'); // Rediriger vers la page de connexion
+    logout(); // Appelle la fonction de déconnexion
+    navigate('/login'); // Redirige vers la page de connexion
   };
 
   return (
@@ -24,6 +25,9 @@ function Navbar() {
             <>
               <Link to="/taches" className="navbar-link">
                 Mes Tâches
+              </Link>
+              <Link to="/profile" className="navbar-link">
+                Profil
               </Link>
               <button className="navbar-button" onClick={handleLogout}>
                 Déconnexion

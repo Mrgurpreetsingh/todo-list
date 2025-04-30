@@ -10,6 +10,7 @@ function Taches() {
   const [titre, setTitre] = useState('');
   const [description, setDescription] = useState('');
   const [priorite_id, setPrioriteId] = useState('1');
+  const [editTache, setEditTache] = useState(null);
   const [error, setError] = useState(null);
 
   const apiUrl = import.meta.env.VITE_API_URL || '/api';
@@ -20,6 +21,7 @@ function Taches() {
       baseURL: apiUrl,
       headers: {
         Authorization: `Bearer ${token}`,
+        'Accept-Charset': 'utf-8',
       },
       withCredentials: true,
     });
@@ -96,6 +98,24 @@ function Taches() {
     }
   };
 
+  const handleModifierTache = async (tache) => {
+    try {
+      console.log('📥 Modification de la tâche:', tache.id_tache);
+      const axiosInstance = getAxiosInstance();
+      await axiosInstance.put(`/tasks/${tache.id_tache}`, {
+        titre: tache.titre,
+        description: tache.description,
+        priorite_id: parseInt(tache.priorite_id),
+      });
+      await fetchTaches();
+      setEditTache(null);
+      setError(null);
+    } catch (error) {
+      console.error('❌ Erreur lors de la modification:', error);
+      setError('Impossible de modifier la tâche.');
+    }
+  };
+
   console.log('Rendu de Taches, user:', user, 'token:', token, 'taches:', taches);
 
   return (
@@ -132,37 +152,79 @@ function Taches() {
           </select>
           <button type="submit" className="taches-button">Ajouter</button>
         </form>
-        <ul className="taches-list">
-          {taches.map((tache) => (
-            <li key={tache.id_tache} className="tache-item">
-              <h3
-                style={{
-                  textDecoration: tache.est_complete ? 'line-through' : 'none',
-                }}
-              >
-                {tache.titre}
-              </h3>
-              <p>{tache.description}</p>
-              <p>Priorité: {tache.priorite_niveau || 'Aucune'}</p>
-              <button
-                onClick={() =>
-                  handleToggleComplete(tache.id_tache, tache.est_complete)
-                }
-                className="taches-button"
-              >
-                {tache.est_complete
-                  ? 'Marquer comme incomplète'
-                  : 'Marquer comme complète'}
-              </button>
-              <button
-                onClick={() => handleSupprimerTache(tache.id_tache)}
-                className="taches-button taches-button-delete"
-              >
-                Supprimer
-              </button>
-            </li>
-          ))}
-        </ul>
+        {editTache ? (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleModifierTache(editTache);
+            }}
+            className="taches-form"
+          >
+            <input
+              type="text"
+              value={editTache.titre}
+              onChange={(e) => setEditTache({ ...editTache, titre: e.target.value })}
+              required
+              className="taches-input"
+            />
+            <textarea
+              value={editTache.description || ''}
+              onChange={(e) => setEditTache({ ...editTache, description: e.target.value })}
+              className="taches-textarea"
+            />
+            <select
+              value={editTache.priorite_id}
+              onChange={(e) => setEditTache({ ...editTache, priorite_id: e.target.value })}
+              className="taches-select"
+            >
+              <option value="1">Basse</option>
+              <option value="2">Moyenne</option>
+              <option value="3">Haute</option>
+            </select>
+            <button type="submit" className="taches-button">Enregistrer</button>
+            <button
+              type="button"
+              onClick={() => setEditTache(null)}
+              className="taches-button"
+            >
+              Annuler
+            </button>
+          </form>
+        ) : (
+          <ul className="taches-list">
+            {taches.map((tache) => (
+              <li key={tache.id_tache} className="tache-item">
+                <h3
+                  style={{
+                    textDecoration: tache.est_complete ? 'line-through' : 'none',
+                  }}
+                >
+                  {tache.titre}
+                </h3>
+                <p>{tache.description}</p>
+                <p>Priorité: {tache.priorite_niveau || 'Aucune'}</p>
+                <button
+                  onClick={() => handleToggleComplete(tache.id_tache, tache.est_complete)}
+                  className="taches-button"
+                >
+                  {tache.est_complete ? 'Marquer comme incomplète' : 'Marquer comme complète'}
+                </button>
+                <button
+                  onClick={() => setEditTache(tache)}
+                  className="taches-button"
+                >
+                  Modifier
+                </button>
+                <button
+                  onClick={() => handleSupprimerTache(tache.id_tache)}
+                  className="taches-button taches-button-delete"
+                >
+                  Supprimer
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );
